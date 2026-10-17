@@ -1,5 +1,5 @@
 // Offline-Speicher: App-Dateien werden beim ersten Öffnen gesichert und danach ohne Internet geladen.
-const CACHE = "zeitstrahl-app-v3";
+const CACHE = "zeitstrahl-app-v4";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {

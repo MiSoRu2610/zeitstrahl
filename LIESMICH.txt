@@ -1,4 +1,4 @@
-Therapie-Zeitstrahl (Stand 17.10.2026, App-Version 3)
+Therapie-Zeitstrahl (Stand 17.10.2026, App-Version 4)
 
 Alle Dateien in einen Ordner legen und per Webserver ausliefern (die Offline-Funktion braucht https oder localhost), z. B.:
   python3 -m http.server 8000
