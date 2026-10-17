@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Therapie-Zeitstrahl</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zeitstrahl">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2f6f8f">
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #fff; --text: #1f2933; --muted: #6b7785; --line: #d9dee4;
+    --accent: #2f6f8f; --accent-d: #235570; --danger: #b3412f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text);
+         padding-bottom: env(safe-area-inset-bottom); }
+  header { background: var(--accent); color: #fff; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  header h1 { font-size: 1.1rem; margin: 0; flex: 1; white-space: nowrap; }
+  header button { background: rgba(255,255,255,.2); color: #fff; border: 0; padding: 8px 10px; border-radius: 8px; font-size: .85rem; cursor: pointer; }
+  nav.tabs { display: flex; gap: 4px; padding: 8px 12px 0; }
+  nav.tabs button { flex: 1; border: 0; background: none; padding: 10px 8px; font-size: 1rem; cursor: pointer; border-bottom: 3px solid transparent; color: var(--muted); }
+  nav.tabs button.on { color: var(--accent-d); border-color: var(--accent); font-weight: 600; }
+  main { padding: 12px; max-width: 1100px; margin: 0 auto; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 14px; }
+  .card h3 { margin: 0 0 8px; }
+  .layout { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: start; }
+  .layout > * { min-width: 0; }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .plist { flex-direction: row !important; overflow-x: auto; padding-bottom: 4px; }
+    .pitem { flex: none; }
+  }
+  .plist { display: flex; flex-direction: column; gap: 8px; }
+  .pitem { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; border: 2px solid var(--line); background: #fff; cursor: pointer; text-align: left; font-size: 1rem; }
+  .pitem.on { border-color: var(--accent); background: #eaf4f8; }
+  .pitem small { display: block; color: var(--muted); font-size: .78rem; }
+  .badge { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex: none; }
+  .dotlv { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; background: var(--lv); }
+  button.primary { background: var(--accent); color: #fff; border: 0; padding: 11px 16px; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+  button.primary:active { background: var(--accent-d); }
+  button.ghost { background: none; border: 1px solid var(--line); padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: .9rem; color: var(--text); }
+  button.danger { color: var(--danger); }
+  form .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  form label { display: flex; flex-direction: column; font-size: .85rem; color: var(--muted); gap: 4px; flex: 1; min-width: 130px; }
+  input, select, textarea { font: inherit; font-size: 16px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); width: 100%; }
+  textarea { min-height: 70px; resize: vertical; }
+  .phead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .phead h2 { margin: 0; flex: 1; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  .pill.demo { background: #fff3cd; border-color: #f0d98a; color: #7a5b00; }
+  .pill { display: inline-block; font-size: .72rem; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); vertical-align: middle; }
+  /* Auswahl-Chips (Radio-Buttons) */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .chips label.chip { flex: none; min-width: 0; flex-direction: row; align-items: center; gap: 6px; padding: 10px 14px; border: 2px solid var(--line); border-radius: 10px; color: var(--text); font-size: 1rem; background: #fff; cursor: pointer; }
+  .chips label.chip:has(input:checked) { border-color: var(--accent); background: #eaf4f8; font-weight: 600; }
+  .chips input { width: auto; }
+  .field-title { font-size: .85rem; color: var(--muted); margin-bottom: 6px; }
+  /* Termin eintragen */
+  .kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .kind { min-width: 0; text-align: left; padding: 14px 12px; border: 2px solid var(--line); border-radius: 12px; background: #fff; font-size: 1rem; cursor: pointer; color: var(--text); }
+  .kind small { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; }
+  .kind.rec { border-color: var(--accent); background: #eaf4f8; }
+  /* Abschnitt */
+  .sec { border-left: 6px solid var(--lv); }
+  .sec .big { font-size: 1.25rem; font-weight: 700; }
+  .secline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .alert { margin-top: 8px; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--lv) 12%, white); color: var(--lv); font-weight: 600; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .prog { height: 10px; background: #e6eaee; border-radius: 5px; overflow: hidden; margin: 8px 0 0; }
+  .prog > i { display: block; height: 100%; background: var(--lv); border-radius: 5px; }
+  /* Abschnittsbalken mit Punkt für den aktuellen Stand */
+  .stepbar { --d: 20px; display: flex; gap: 3px; margin-top: 14px; }
+  .stepbar.compact { --d: 14px; margin-top: 8px; }
+  .sg { flex: 1; min-width: 0; text-align: center; }
+  .sg .tr { position: relative; height: 12px; background: #e6eaee; border-radius: 6px; }
+  .stepbar.compact .tr { height: 8px; border-radius: 4px; }
+  .sg .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c); border-radius: inherit; width: 0; }
+  .sg.past .fill { width: 100%; opacity: .55; }
+  .sg.now .fill { width: calc(var(--d) / 2 + (100% - var(--d)) * var(--f)); }
+  .sg .pt { position: absolute; top: 50%; width: var(--d); height: var(--d); margin-top: calc(var(--d) / -2);
+            left: calc((100% - var(--d)) * var(--f)); border-radius: 50%; background: var(--lv); border: 3px solid #fff; box-shadow: 0 0 0 1.5px var(--lv); }
+  .sg span { display: block; font-size: .66rem; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sg.now span { color: var(--text); font-weight: 700; }
+  /* vertikaler Zeitstrahl */
+  .tl { position: relative; margin: 16px 0 0 14px; padding-left: 28px; border-left: 3px solid var(--line); }
+  .ev { position: relative; margin-bottom: 18px; }
+  .ev::before { content: ""; position: absolute; left: -40px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 0 0 2px var(--c); }
+  .ev .d { font-size: .85rem; color: var(--muted); }
+  .ev .t { font-weight: 600; }
+  .tag { display: inline-block; font-size: .75rem; padding: 2px 8px; border-radius: 99px; color: #fff; background: var(--c); margin-right: 6px; vertical-align: middle; }
+  .ev p { margin: 4px 0; white-space: pre-wrap; }
+  .ev .acts { display: flex; gap: 6px; }
+  .ev .acts button { font-size: .8rem; padding: 4px 9px; }
+  .empty { color: var(--muted); text-align: center; padding: 30px 10px; }
+  /* Überblick */
+  .due { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .due:last-child { border-bottom: 0; }
+  .due .info { flex: 1; min-width: 0; }
+  .due .info b { display: block; }
+  .due .msg { font-size: .85rem; color: var(--lv); font-weight: 600; display: block; }
+  .due .sub { font-size: .8rem; color: var(--muted); display: block; }
+  .due .count { font-weight: 700; color: var(--lv); text-align: right; white-space: nowrap; }
+  .due .stepbar { flex: 0 0 100%; }
+  .lane { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .lane .badge { width: 34px; height: 34px; margin-top: 4px; font-size: .85rem; cursor: pointer; }
+  .track { position: relative; flex: 1; height: 42px; }
+  .track .base { position: absolute; top: 23px; height: 4px; background: #cfd6dd; border-radius: 2px; }
+  .track .tk { position: absolute; top: 17px; width: 2px; height: 16px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
+  .track .sl { position: absolute; top: 3px; text-align: center; font-size: .62rem; color: var(--c); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track .seg { position: absolute; top: 22px; height: 6px; background: var(--c); border-radius: 3px; opacity: .8; }
+  .track .dot { position: absolute; top: 16px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--c); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--c); cursor: pointer; }
+  .track .dot.cur { top: 14px; width: 22px; height: 22px; margin-left: -11px; border-width: 3px; box-shadow: 0 0 0 2px var(--c); }
+  .axis { position: relative; height: 22px; margin-left: 44px; border-bottom: 1px solid var(--line); margin-bottom: 14px; font-size: .75rem; color: var(--muted); }
+  .axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .today { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--danger); opacity: .5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .82rem; margin-top: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--c); margin-right: 5px; vertical-align: -1px; }
+  .hint { background: #fff8e1; border: 1px solid #f0d98a; border-radius: 10px; padding: 10px 12px; font-size: .85rem; margin-bottom: 14px; }
+  details summary { cursor: pointer; color: var(--accent-d); padding: 4px 0; }
+  svg text { font-size: 11px; fill: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧭 Therapie-Zeitstrahl</h1>
+  <button id="btnExport">⬇ Sichern</button>
+  <button id="btnImport">⬆ Laden</button>
+  <input type="file" id="fileImport" accept="application/json,.json" hidden>
+</header>
+<nav class="tabs">
+  <button data-tab="overview" class="on">Fälligkeiten</button>
+  <button data-tab="patient">Einzelner Patient</button>
+</nav>
+<main>
+  <div class="hint">🔒 Nur Kürzel verwenden (z. B. <b>MS</b>). Alle Daten bleiben <b>nur auf diesem Gerät</b>. Bitte ab und zu mit „Sichern“ eine Datei speichern.</div>
+  <div id="view"></div>
+  <p class="meta" style="text-align:center;font-size:.75rem">App-Version 3 · 17.10.2026</p>
+</main>
+
+<script>
+/* ---------- Grunddaten ---------- */
+const SECS = [
+  { k: "sprech", label: "Sprechstunde",   short: "Sprech.", color: "#8fa3b5", limit: 6,  unit: "Einheiten à 25 min" },
+  { k: "proba",  label: "Probatorik",     short: "Probat.", color: "#3aa6a0", limit: 4,  unit: "Probatorik-Sitzungen" },
+  { k: "akut",   label: "Akuttherapie",   short: "Akut",    color: "#e0627a", limit: 12, unit: "Sitzungen" },
+  { k: "kzt1",   label: "Kurzzeit 1",     short: "KZT 1",   color: "#4a90c2", limit: 12, unit: "Sitzungen" },
+  { k: "kzt2",   label: "Kurzzeit 2",     short: "KZT 2",   color: "#5a8f7b", limit: 12, unit: "Sitzungen" },
+  { k: "lzt",    label: "Langzeit",       short: "LZT",     color: "#7b6bb0", limit: 36, unit: "Sitzungen" },
+  { k: "v1",     label: "Verlängerung 1", short: "Verl. 1", color: "#d08a1e", limit: 20, unit: "Sitzungen" },
+  { k: "v2",     label: "Verlängerung 2", short: "Verl. 2", color: "#c0442f", limit: 20, unit: "Sitzungen" }
+];
+const SEC = Object.fromEntries(SECS.map(s => [s.k, s]));
+// Akuttherapie ersetzt KZT 1; dann steht die Probatorik zwischen Akuttherapie und KZT 2.
+const REG_PATH = ["sprech", "proba", "kzt1", "kzt2", "lzt", "v1", "v2"];
+const AKUT_PATH = ["sprech", "akut", "proba", "kzt2", "lzt", "v1", "v2"];
+const ANTRAG = ["kzt1", "kzt2", "lzt", "v1", "v2"];   // diese Abschnitte müssen beantragt werden
+const EINZEL_CAP = 150;                                // Min. Einzelgespräch pro Quartal (GKV)
+const TYPES = {
+  erst:    { label: "Therapiebeginn",           color: "#2f6f8f" },
+  sprech:  { label: "Sprechstunde",           color: "#8fa3b5" },
+  proba:   { label: "Probatorik",             color: "#3aa6a0" },
+  sitzung: { label: "Richtlinientherapie",    color: "#6b7785" },
+  einzel:  { label: "Einzelgespräch",         color: "#a0629b" },
+  antrag:  { label: "Antrag / Bericht",       color: "#7b6bb0" },
+  abschnitt:{ label: "Neuer Abschnitt",       color: "#d08a1e" },
+  pause:   { label: "Pause",                  color: "#9aa5b1" },
+  abschluss:{ label: "Abschluss",             color: "#222f3e" }
+};
+const QUICK = ["sitzung", "sprech", "proba", "einzel"]; // zählen Kontingente, keine Punkte im Gesamt-Zeitstrahl
+const STATUS = { laufend: "laufend", pause: "Pause", abgeschlossen: "abgeschlossen" };
+const LV = { ok: "#2e7d32", soon: "#c77700", over: "#b3412f", applied: "#2f6f8f", done: "#9aa5b1" };
+const KEY = "therapie-zeitstrahl-v1";
+
+function defaultLimits() { return Object.fromEntries(SECS.map(s => [s.k, s.limit])); }
+
+let db = load();
+let state = { tab: "overview", sel: db.patients[0]?.id || null, editPatient: false, editEvent: null, showEventForm: false, newPatient: false, showSecForm: false, add: null };
+
+function load() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  return migrate(d);
+}
+function migrate(d) {
+  if (!d || !Array.isArray(d.patients)) d = { patients: [] };
+  d.settings = Object.assign({ warn: 5 }, d.settings);
+  d.patients.forEach(p => {
+    delete p.method; delete p.topic;
+    // Nur Übersicht, keine Dokumentation: Freitext, Titel, Belastungswerte und Doku-Ereignisse entfernen
+    p.events = (p.events || []).filter(e => e.type in TYPES);
+    p.events.forEach(e => {
+      if (e.type === "abschnitt" && !e.sec) e.sec = (SECS.find(x => (e.title || "").startsWith(x.label)) || {}).k || "";
+      delete e.title; delete e.text; delete e.score;
+    });
+    const L = p.limits || {};
+    if (L.lzt === 45 && L.v1 === 15 && L.v2 === 20) { L.lzt = 36; L.v1 = 20; L.v2 = 20; }   // alte Vorgabewerte
+    p.limits = Object.assign(defaultLimits(), L);
+    if (!Array.isArray(p.sections) || !p.sections.length) p.sections = [{ key: "sprech", start: p.start || today() }];
+    p.applied = p.applied || "";
+    p.ins = p.ins || "gkv";
+  });
+  return d;
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(db)); }
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+const fmt = d => d ? new Date(d + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+const ts = d => new Date(d + "T00:00:00").getTime();
+const sorted = p => [...p.events].sort((a, b) => a.date.localeCompare(b.date));
+const cur = () => db.patients.find(p => p.id === state.sel);
+const units = e => Math.max(1, Math.round((Number(e.minutes) || 50) / 25));   // Sprechstunde: 25-min-Einheiten
+const insLabel = p => p.ins === "privat" ? "Privat" : "GKV";
+
+/* Quartal (für die 150 Min. Einzelgespräch) */
+const qOf = d => d.slice(0, 4) + "-Q" + (Math.floor((+d.slice(5, 7) - 1) / 3) + 1);
+function quarterInfo() {
+  const t = today(), y = +t.slice(0, 4), q = +qOf(t).slice(-1);
+  const end = new Date(y, q * 3, 0);
+  return { label: "Q" + q + "/" + y, end: end.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) };
+}
+function einzelMin(p) {
+  const q = qOf(today());
+  return p.events.filter(e => e.type === "einzel" && qOf(e.date) === q).reduce((n, e) => n + (Number(e.minutes) || 0), 0);
+}
+
+/* Verbrauch im aktuellen Abschnitt */
+function usedIn(p, key, from) {
+  if (key === "sprech") return p.events.filter(e => e.type === "sprech").reduce((n, e) => n + units(e), 0);
+  if (key === "proba") return p.events.filter(e => e.type === "proba").length;
+  return p.events.filter(e => e.type === "sitzung" && e.date >= from).length;
+}
+
+/* Abschnitts-Auswertung für einen Patienten */
+function info(p) {
+  const secs = [...p.sections].sort((a, b) => a.start.localeCompare(b.start));
+  const now = secs[secs.length - 1];
+  const def = SEC[now.key];
+  const limit = Number(p.limits[now.key]) || 0;
+  const used = usedIn(p, now.key, now.start);
+  const left = limit - used;
+  let path = p.sections.some(s => s.key === "akut") ? AKUT_PATH : REG_PATH;
+  let idx = path.indexOf(now.key);
+  if (idx < 0) { path = REG_PATH; idx = path.indexOf(now.key); }
+  const next = SEC[path[idx + 1]] || null;
+  const antrag = !!next && ANTRAG.includes(next.k);
+  const warn = limit <= 6 ? 1 : db.settings.warn;
+  let lv, msg;
+  if (p.status === "abgeschlossen") { lv = "done"; msg = "Therapie abgeschlossen"; }
+  else if (p.applied && left > 0) { lv = "applied"; msg = `Antrag gestellt am ${fmt(p.applied)} – auf Bewilligung warten`; }
+  else if (left <= 0) {
+    if (antrag) { lv = "over"; msg = `Kontingent aufgebraucht – Antrag / Bericht für ${next.label} fällig!`; }
+    else if (next) { lv = "soon"; msg = `Abschnitt voll – als Nächstes: ${next.label}`; }
+    else { lv = "over"; msg = "Kontingent aufgebraucht – Abschluss / weiteres Vorgehen klären"; }
+  }
+  else if (left <= warn) {
+    if (antrag) { lv = "soon"; msg = `Bald Antrag / Bericht für ${next.label} schreiben`; }
+    else if (next) { lv = "soon"; msg = `Fast voll – als Nächstes: ${next.label}`; }
+    else { lv = "soon"; msg = "Letzter Abschnitt – Abschluss planen"; }
+  }
+  else { lv = "ok"; msg = "Alles im Plan"; }
+  const frac = limit ? Math.min(1, used / limit) : 1;
+  return { secs, now, def, limit, used, left, path, idx, next, antrag, lv, msg, frac, color: LV[lv] };
+}
+const order = p => { const i = info(p); return i.lv === "done" ? 1e6 : i.lv === "applied" ? 1e5 + i.left : i.left; };
+const countText = i => i.def.k === "sprech" ? `${i.used}/${i.limit}` : `${i.used}/${i.limit}`;
+
+/* Balken über alle Abschnitte, Punkt = aktueller Stand */
+function stepBar(p, compact) {
+  const i = info(p);
+  return `<div class="stepbar ${compact ? "compact" : ""}">` + i.path.map((k, n) => {
+    const s = SEC[k];
+    const st = n < i.idx ? "past" : n === i.idx ? "now" : "future";
+    return `<div class="sg ${st}" style="--c:${s.color};--f:${st === "now" ? i.frac : 0};--lv:${i.color}">
+      <div class="tr"><i class="fill"></i>${st === "now" ? '<b class="pt"></b>' : ""}</div><span>${s.short}</span></div>`;
+  }).join("") + "</div>";
+}
+
+/* Fiktive Beispieldaten (nur zum Anschauen, jederzeit entfernbar) */
+function demoPatients() {
+  const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+  // secs: [Abschnitt, Beginn (Tage vor heute), Anzahl Termine bisher]
+  const mk = (code, ins, specs) => {
+    const sections = [], events = [];
+    specs.forEach(([k, off, n], idx) => {
+      sections.push({ key: k, start: day(-off) });
+      if (idx === 0) events.push({ id: uid(), date: day(-off), type: "erst" });
+      else {
+        events.push({ id: uid(), date: day(-off), type: "abschnitt", sec: k });
+        if (ANTRAG.includes(k)) events.push({ id: uid(), date: day(-off - 12), type: "antrag" });
+      }
+      for (let j = 0; j < n; j++) {
+        const date = day(-off + j * 7 + 2);
+        if (date > today()) break;
+        events.push({ id: uid(), date, type: k === "sprech" ? "sprech" : k === "proba" ? "proba" : "sitzung", minutes: k === "sprech" ? 50 : "" });
+      }
+    });
+    return { id: uid(), code, ins, demo: true, start: sections[0].start, status: "laufend", applied: "", limits: defaultLimits(), sections, events };
+  };
+  const a = mk("XA", "gkv", [["sprech", 300, 3], ["proba", 270, 4], ["kzt1", 240, 12], ["kzt2", 150, 12], ["lzt", 60, 8]]);
+  const b = mk("XB", "privat", [["sprech", 130, 2], ["akut", 110, 12], ["proba", 25, 3]]);
+  const c = mk("XC", "gkv", [["sprech", 720, 3], ["proba", 690, 4], ["kzt1", 660, 12], ["lzt", 570, 36], ["v1", 280, 20], ["v2", 100, 14]]);
+  [a, b, c].forEach(p => p.events.push({ id: uid(), date: day(-5), type: "einzel", minutes: 50 }));
+  return [a, b, c];
+}
+
+function render() {
+  document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === state.tab));
+  document.getElementById("view").innerHTML = state.tab === "overview" ? viewOverview() : viewPatient();
+}
+
+/* ---------- Einzelner Patient ---------- */
+function viewPatient() {
+  const list = db.patients.map(p => { const i = info(p); return `
+    <button class="pitem ${p.id === state.sel ? "on" : ""}" data-sel="${p.id}">
+      <span class="badge">${esc(p.code)}</span>
+      <span><b>${esc(p.code)}</b><small><span class="dotlv" style="--lv:${i.color}"></span>${i.def.short}</small></span>
+    </button>`; }).join("");
+  const side = `<div class="card"><div class="plist">${list}
+    <button class="primary" data-act="newPatient" style="white-space:nowrap">+ Neu</button></div></div>`;
+  let main = "";
+  if (state.newPatient) main = patientForm(null);
+  else if (!cur()) main = `<div class="card empty">Lege einen Patienten mit Kürzel an, um zu beginnen.</div>`;
+  else main = state.editPatient ? patientForm(cur()) : patientDetail(cur());
+  return `<div class="layout">${side}<div>${main}</div></div>`;
+}
+
+function patientForm(p) {
+  const lim = p?.limits || defaultLimits();
+  return `<div class="card"><h3>${p ? "Patient bearbeiten" : "Neuer Patient"}</h3>
+  <form id="fPatient">
+    <div class="row">
+      <label>Kürzel (Vorname + Nachname)
+        <input name="code" required maxlength="3" autocapitalize="characters" placeholder="z. B. MS" value="${esc(p?.code || "")}" style="text-transform:uppercase"></label>
+      <label>Therapiebeginn <input type="date" name="start" value="${esc(p?.start || today())}"></label>
+    </div>
+    <div class="field-title">Versicherung</div>
+    <div class="chips">
+      <label class="chip"><input type="radio" name="ins" value="gkv" required ${p?.ins === "gkv" ? "checked" : ""}> GKV</label>
+      <label class="chip"><input type="radio" name="ins" value="privat" ${p?.ins === "privat" ? "checked" : ""}> Privat</label>
+    </div>
+    <div class="row">
+      ${p ? "" : `<label>Aktueller Abschnitt <select name="sec">${SECS.map(s => `<option value="${s.k}" ${s.k === "sprech" ? "selected" : ""}>${s.label}</option>`).join("")}</select></label>
+      <label>Abschnitt begann am <input type="date" name="secStart" value="${today()}"></label>`}
+      <label>Status <select name="status">${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${p?.status === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+    </div>
+    <details style="margin-bottom:10px"><summary>Genehmigte Kontingente pro Abschnitt</summary>
+      <div class="row" style="margin-top:8px">${SECS.map(s => `<label>${s.label} <span style="font-size:.72rem">(${s.unit})</span><input type="number" inputmode="numeric" min="0" max="999" name="lim_${s.k}" value="${lim[s.k]}"></label>`).join("")}</div>
+    </details>
+    <button class="primary" type="submit">Speichern</button>
+    <button class="ghost" type="button" data-act="cancelPatient">Abbrechen</button>
+    ${p ? `<button class="ghost danger" type="button" data-act="delPatient" style="float:right">Löschen</button>` : ""}
+  </form></div>`;
+}
+
+function secCard(p) {
+  const i = info(p);
+  const minInfo = i.def.k === "sprech" ? ` <span class="meta">(${i.used * 25} von ${i.limit * 25} min)</span>` : "";
+  const form = state.showSecForm ? `<form id="fSec" style="margin-top:12px">
+      <div class="row"><label>Neuer Abschnitt <select name="sec">${SECS.map(s => `<option value="${s.k}" ${i.next?.k === s.k ? "selected" : ""}>${s.label}</option>`).join("")}</select></label>
+      <label>Beginn <input type="date" name="start" value="${today()}"></label></div>
+      <button class="primary" type="submit">Abschnitt beginnen</button>
+      <button class="ghost" type="button" data-act="cancelSec">Abbrechen</button></form>` : "";
+  return `<div class="card sec" style="--lv:${i.def.color}">
+    <div class="secline"><span class="big" style="color:${i.def.color}">${i.def.label}</span>
+      <span class="meta">seit ${fmt(i.now.start)}</span></div>
+    <div class="secline"><span><b>${i.used}</b> von <b>${i.limit}</b> ${i.def.unit}${minInfo}</span>
+      <span style="color:${i.color};font-weight:700">${i.left > 0 ? "noch " + i.left : i.left === 0 ? "voll" : (-i.left) + " drüber"}</span></div>
+    ${stepBar(p, false)}
+    <div class="alert" style="--lv:${i.color}">${i.lv === "ok" ? "✅" : i.lv === "applied" ? "📨" : i.lv === "done" ? "🏁" : "⚠️"} ${esc(i.msg)}</div>
+    ${form}
+    <div class="btns">
+      ${p.status !== "abgeschlossen" ? `<button class="primary" data-act="openAdd">+ Termin eintragen</button>` : ""}
+      ${p.status !== "abgeschlossen" && !p.applied && i.antrag ? `<button class="ghost" data-act="markApplied">📨 Antrag gestellt</button>` : ""}
+      ${p.applied ? `<button class="ghost" data-act="unmarkApplied">Antrag zurücknehmen</button>` : ""}
+      ${!state.showSecForm && p.status !== "abgeschlossen" ? `<button class="ghost" data-act="newSec">➡ Neuer Abschnitt</button>` : ""}
+      ${p.sections.length > 1 ? `<button class="ghost danger" data-act="undoSec">Abschnitt rückgängig</button>` : ""}
+    </div></div>`;
+}
+
+/* Termin eintragen: Schritt 1 = Art wählen, Schritt 2 = Details */
+function addCard(p) {
+  const a = state.add;
+  if (!a) return "";
+  const key = info(p).now.key;
+  const rec = key === "sprech" ? "sprech" : key === "proba" ? "proba" : "sitzung";
+  if (!a.kind) {
+    const opts = [["sitzung", "Richtlinientherapie", "zählt im aktuellen Abschnitt"],
+                  ["einzel", "Psychotherapeutisches Einzelgespräch", "mit Minuten, pro Quartal"],
+                  ["sprech", "Sprechstunde", "25-min-Einheiten, max. 6"],
+                  ["proba", "Probatorik", "max. 4 Sitzungen"]];
+    return `<div class="card"><h3>Was war es?</h3>
+      <div class="kinds">${opts.map(([k, t, d]) => `<button class="kind ${k === rec ? "rec" : ""}" data-addkind="${k}"><b>${t}</b><small>${d}</small></button>`).join("")}</div>
+      <button class="ghost" data-act="cancelAdd" style="margin-top:10px">Abbrechen</button></div>`;
+  }
+  const chips = (list, def) => `<div class="chips">${list.map(([v, t]) => `<label class="chip"><input type="radio" name="minutes" value="${v}" ${v === def ? "checked" : ""}> ${t}</label>`).join("")}</div>`;
+  let extra = "", hint = "";
+  if (a.kind === "einzel") {
+    const q = quarterInfo();
+    extra = `<div class="field-title">Minuten</div>${chips([[25, "25"], [50, "50"], [75, "75"], [100, "100"]], 50)}
+      <label style="margin-bottom:10px">oder andere Minutenzahl <input type="number" name="minOther" inputmode="numeric" min="1" max="600" placeholder="z. B. 40"></label>`;
+    hint = `Bisher in ${q.label}: ${einzelMin(p)} min`;
+  } else if (a.kind === "sprech") {
+    extra = `<div class="field-title">Wie lang?</div>${chips([[50, "50 min (2×25)"], [25, "25 min"], [75, "3×25 (75 min)"], [100, "2×50 (100 min)"]], 50)}`;
+    const u = p.events.filter(e => e.type === "sprech").reduce((n, e) => n + units(e), 0);
+    hint = `Bisher ${u} von ${p.limits.sprech} Einheiten (${u * 25} min)`;
+  } else if (a.kind === "proba") {
+    const n = p.events.filter(e => e.type === "proba").length;
+    hint = `Bisher ${n} von ${p.limits.proba} Probatorik-Sitzungen`;
+  } else {
+    hint = `Zählt im Abschnitt ${info(p).def.label}`;
+  }
+  const name = { sitzung: "Richtlinientherapie", einzel: "Psychotherapeutisches Einzelgespräch", sprech: "Sprechstunde", proba: "Probatorik" }[a.kind];
+  return `<form id="fAdd" class="card">
+    <h3>${name}</h3><p class="meta" style="margin-top:0">${hint}</p>
+    <input type="hidden" name="kind" value="${a.kind}">
+    <div class="row"><label>Datum <input type="date" name="date" required value="${today()}"></label></div>
+    ${extra}
+    <button class="primary" type="submit">Speichern</button>
+    <button class="ghost" type="button" data-act="backAdd">Zurück</button>
+    <button class="ghost" type="button" data-act="cancelAdd">Abbrechen</button>
+  </form>`;
+}
+
+/* Einzelgespräche pro Quartal */
+function einzelCard(p) {
+  if (!p.events.some(e => e.type === "einzel")) return "";
+  const q = quarterInfo(), min = einzelMin(p), gkv = p.ins !== "privat";
+  const pct = Math.min(100, Math.round(min / EINZEL_CAP * 100));
+  const col = !gkv ? LV.applied : min >= EINZEL_CAP ? LV.over : min >= EINZEL_CAP - 50 ? LV.soon : LV.ok;
+  return `<div class="card" style="--lv:${col}"><div class="secline"><b>Einzelgespräche ${q.label}</b>
+    <span style="color:${col};font-weight:700">${gkv ? `${min} von ${EINZEL_CAP} min` : `${min} min`}</span></div>
+    ${gkv ? `<div class="prog"><i style="width:${pct}%"></i></div>
+    <div class="meta" style="margin-top:6px">${min >= EINZEL_CAP ? "Kontingent für dieses Quartal voll" : "noch " + (EINZEL_CAP - min) + " min"} • Quartalsende ${q.end}</div>` : ""}</div>`;
+}
+
+function patientDetail(p) {
+  const evs = sorted(p);
+  const days = Math.max(0, Math.round((Date.now() - ts(p.start)) / 864e5));
+  const form = state.showEventForm ? eventForm(p, state.editEvent ? p.events.find(e => e.id === state.editEvent) : null) : "";
+  const tl = evs.length ? `<div class="tl">${evs.slice().reverse().map(e => {
+      const t = TYPES[e.type] || TYPES.erst;
+      const det = e.type === "einzel" ? `${e.minutes || "?"} min` : e.type === "sprech" ? `${e.minutes || 50} min (${units(e)}×25)` : e.type === "abschnitt" ? (SEC[e.sec]?.label || "") : "";
+      return `<div class="ev" style="--c:${t.color}">
+        <div class="d">${fmt(e.date)}</div>
+        <div class="t"><span class="tag">${t.label}</span>${esc(det)}</div>
+        <div class="acts"><button class="ghost" data-editev="${e.id}">Bearbeiten</button><button class="ghost danger" data-delev="${e.id}">Löschen</button></div>
+      </div>`; }).join("")}</div>` : `<div class="empty">Noch keine Einträge.</div>`;
+  return `<div class="card">
+    <div class="phead"><span class="badge" style="width:52px;height:52px;font-size:1.1rem">${esc(p.code)}</span>
+      <h2>${esc(p.code)} <span class="pill">${insLabel(p)}</span>${p.demo ? ' <span class="pill demo">Beispiel</span>' : ""}</h2>
+      <button class="ghost" data-act="editPatient">Bearbeiten</button></div>
+    <div class="meta">Beginn ${fmt(p.start)} • ${days} Tage • Status: ${STATUS[p.status]}</div>
+  </div>
+  ${secCard(p)}
+  ${addCard(p)}
+  ${einzelCard(p)}
+  <div class="card">
+    <div class="phead"><h3 style="margin:0;flex:1">Verlauf</h3>${state.showEventForm ? "" : `<button class="primary" data-act="newEvent">+ Eintrag</button>`}</div>
+    ${form}${tl}
+  </div>`;
+}
+
+function eventForm(p, e) {
+  return `<form id="fEvent" class="card" style="background:#f8fafb;box-shadow:none;border:1px solid var(--line)">
+    <div class="row">
+      <label>Datum <input type="date" name="date" required value="${esc(e?.date || today())}"></label>
+      <label>Art <select name="type">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}" ${(e?.type || "sitzung") === k ? "selected" : ""}>${v.label}</option>`).join("")}</select></label>
+    </div>
+    <label style="margin-bottom:10px">Minuten (nur Einzelgespräch / Sprechstunde) <input type="number" name="minutes" inputmode="numeric" min="0" max="600" value="${esc(e?.minutes ?? "")}"></label>
+    <button class="primary" type="submit">Speichern</button>
+    <button class="ghost" type="button" data-act="cancelEvent">Abbrechen</button>
+  </form>`;
+}
+
+/* ---------- Überblick / Fälligkeiten ---------- */
+function demoCard() {
+  const has = db.patients.some(p => p.demo);
+  return `<div class="card"><b>Beispieldaten</b>
+    <p class="meta" style="margin:4px 0 10px">Drei erfundene Patienten (XA, XB, XC) mit Terminen in allen Abschnitten – nur zum Anschauen.</p>
+    ${has ? `<button class="ghost danger" data-act="removeDemo">Beispieldaten entfernen</button>` : `<button class="primary" data-act="addDemo">Beispieldaten anzeigen</button>`}</div>`;
+}
+
+function viewOverview() {
+  const ps = [...db.patients].sort((a, b) => order(a) - order(b));
+  const settings = `<details class="card"><summary>Einstellung: Erinnerung</summary>
+    <form id="fSettings" style="margin-top:8px"><div class="row"><label>Erinnerung ab noch … Sitzungen im Abschnitt (Langzeit, Verlängerung …)
+      <input type="number" inputmode="numeric" min="0" max="50" name="warn" value="${db.settings.warn}"></label></div>
+    <button class="primary" type="submit">Speichern</button></form></details>`;
+  if (!ps.length) return `<div class="card empty">Noch keine Patienten. Wechsle zu „Einzelner Patient“ und lege den ersten an.<br><br><button class="primary" data-act="goNew">+ Ersten Patienten anlegen</button></div>` + demoCard() + settings;
+
+  const q = quarterInfo();
+  const rows = ps.map(p => {
+    const i = info(p);
+    const em = einzelMin(p);
+    const einzelLine = em > 0 ? `<span class="sub">Einzelgespräche ${q.label}: ${p.ins === "privat" ? em + " min" : em + " / " + EINZEL_CAP + " min"}</span>` : "";
+    return `
+    <div class="due" data-open="${p.id}" style="--lv:${i.color}">
+      <span class="badge" style="background:${i.def.color}">${esc(p.code)}</span>
+      <div class="info"><b>${i.def.label} <span class="pill">${insLabel(p)}</span>${p.demo ? ' <span class="pill demo">Beispiel</span>' : ""}</b><span class="msg">${esc(i.msg)}</span>${einzelLine}</div>
+      <div class="count">${countText(i)}</div>
+      ${stepBar(p, true)}
+    </div>`; }).join("");
+
+  const all = ps.flatMap(p => [...p.sections.map(s => s.start), ...p.events.map(e => e.date)]).filter(Boolean);
+  let t0 = Math.min(...all.map(ts)), t1 = Math.max(Date.now(), ...all.map(ts));
+  const pad = Math.max(7 * 864e5, (t1 - t0) * 0.03);
+  t0 -= pad; t1 += pad;
+  const pos = t => ((t - t0) / (t1 - t0) * 100);
+  const marks = [];
+  const d = new Date(t0); d.setDate(1); d.setMonth(d.getMonth() + 1);
+  const months = (t1 - t0) / (30 * 864e5);
+  const step = months > 36 ? 12 : months > 18 ? 6 : months > 8 ? 3 : 1;
+  while (d.getTime() < t1) {
+    marks.push(`<span style="left:${pos(d.getTime())}%">${d.toLocaleDateString("de-DE", { month: "short", year: "2-digit" })}</span>`);
+    d.setMonth(d.getMonth() + step);
+  }
+  const lanes = ps.map(p => {
+    const i = info(p);
+    const evs = sorted(p);
+    const end = p.status === "abgeschlossen" && evs.length ? ts(evs[evs.length - 1].date) : Date.now();
+    const st = Math.min(ts(p.start), ts(i.secs[0].start));
+    const base = `<div class="base" style="left:${pos(st)}%;width:${Math.max(0.5, pos(end) - pos(st))}%"></div>`;
+    const segs = i.secs.map((s, n) => {
+      const a = ts(s.start), b = i.secs[n + 1] ? ts(i.secs[n + 1].start) : end;
+      const w = Math.max(0.5, pos(Math.max(a, b)) - pos(a));
+      return `<div class="seg" style="left:${pos(a)}%;width:${w}%;--c:${SEC[s.key].color}"></div>`
+        + (w >= 11 ? `<span class="sl" style="left:${pos(a)}%;width:${w}%;--c:${SEC[s.key].color}">${SEC[s.key].short}</span>` : "")
+        + (n > 0 ? `<div class="tk" style="left:${pos(a)}%"></div>` : "");
+    }).join("");
+    return `<div class="lane"><span class="badge" data-open="${p.id}">${esc(p.code)}</span>
+      <div class="track">${base}${segs}
+      ${evs.filter(e => !QUICK.includes(e.type) && e.type !== "abschnitt").map(e => { const t = TYPES[e.type] || TYPES.erst;
+        return `<div class="dot" style="left:${pos(ts(e.date))}%;--c:${t.color}" data-open="${p.id}" title="${fmt(e.date)} – ${t.label}"></div>`; }).join("")}
+      ${p.status !== "abgeschlossen" ? `<div class="dot cur" style="left:${pos(end)}%;--c:${i.color}" data-open="${p.id}" title="Jetzt: ${i.def.label}"></div>` : ""}
+      </div></div>`;
+  }).join("");
+  const legend = SECS.map(s => `<span style="--c:${s.color}"><i></i>${s.label}</span>`).join("");
+  return `<div class="card"><h3>Wo stehe ich mit wem?</h3>${rows}</div>
+  <div class="card"><h3>Zeitstrahl alle</h3>
+    <div style="position:relative">
+      <div class="axis">${marks.join("")}<div class="today" style="left:${pos(Date.now())}%"></div></div>
+      <div style="position:relative">${lanes}<div class="today" style="left:calc(44px + (100% - 44px) * ${pos(Date.now()) / 100})"></div></div>
+    </div>
+    <div class="legend">${legend}</div>
+    <p class="meta">Farbige Balken = Abschnitte, großer Punkt am Ende = aktueller Stand. Striche = Abschnittswechsel, kleine Punkte = Therapiebeginn, Anträge u. Ä. (Termine nicht). Rote Linie = heute.</p></div>
+  ${demoCard()}
+  ${settings}`;
+}
+
+/* ---------- Klicks ---------- */
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-tab],[data-sel],[data-act],[data-editev],[data-delev],[data-open],[data-addkind]");
+  if (!t) return;
+  const D = t.dataset;
+  const p = cur();
+  const resetForms = () => { state.newPatient = state.editPatient = state.showEventForm = state.showSecForm = false; state.editEvent = null; state.add = null; };
+  if (D.tab) { state.tab = D.tab; }
+  else if (D.open) { state.tab = "patient"; state.sel = D.open; resetForms(); }
+  else if (D.sel) { state.sel = D.sel; resetForms(); }
+  else if (D.addkind) state.add = { kind: D.addkind };
+  else if (D.editev) { state.editEvent = D.editev; state.showEventForm = true; }
+  else if (D.delev) { if (confirm("Eintrag löschen?")) { p.events = p.events.filter(e => e.id !== D.delev); save(); } }
+  else if (D.act === "newPatient") { resetForms(); state.newPatient = true; }
+  else if (D.act === "goNew") { state.tab = "patient"; resetForms(); state.newPatient = true; }
+  else if (D.act === "editPatient") state.editPatient = true;
+  else if (D.act === "cancelPatient") state.newPatient = state.editPatient = false;
+  else if (D.act === "newEvent") { state.editEvent = null; state.showEventForm = true; }
+  else if (D.act === "cancelEvent") { state.showEventForm = false; state.editEvent = null; }
+  else if (D.act === "openAdd") state.add = { kind: null };
+  else if (D.act === "backAdd") state.add = { kind: null };
+  else if (D.act === "cancelAdd") state.add = null;
+  else if (D.act === "addDemo") { db.patients.push(...demoPatients()); save(); }
+  else if (D.act === "removeDemo") {
+    if (confirm("Die Beispiel-Patienten entfernen? Deine echten Einträge bleiben erhalten.")) {
+      db.patients = db.patients.filter(x => !x.demo); save();
+      if (!cur()) state.sel = db.patients[0]?.id || null;
+    }
+  }
+  else if (D.act === "newSec") state.showSecForm = true;
+  else if (D.act === "cancelSec") state.showSecForm = false;
+  else if (D.act === "markApplied") { p.applied = today(); p.events.push({ id: uid(), date: today(), type: "antrag" }); save(); }
+  else if (D.act === "unmarkApplied") { p.applied = ""; save(); }
+  else if (D.act === "undoSec") {
+    if (confirm("Den zuletzt begonnenen Abschnitt rückgängig machen?")) {
+      const last = info(p).now;
+      p.sections = p.sections.filter(x => x !== last && !(x.key === last.key && x.start === last.start)); p.applied = ""; save();
+    }
+  }
+  else if (D.act === "delPatient") {
+    if (confirm("Patient " + p.code + " mit allen Einträgen endgültig löschen?")) {
+      db.patients = db.patients.filter(x => x.id !== state.sel); save();
+      state.sel = db.patients[0]?.id || null; state.editPatient = false;
+    }
+  }
+  render();
+});
+
+document.addEventListener("submit", ev => {
+  ev.preventDefault();
+  const f = new FormData(ev.target);
+  const id = ev.target.id;
+  if (id === "fPatient") {
+    const code = String(f.get("code")).trim().toUpperCase();
+    if (!/^[A-ZÄÖÜ]{2}[0-9]?$/.test(code)) return alert("Bitte nur zwei Buchstaben (optional mit einer Ziffer, z. B. MS2) eingeben.");
+    const limits = Object.fromEntries(SECS.map(s => [s.k, Math.max(0, parseInt(f.get("lim_" + s.k), 10) || 0)]));
+    const data = { code, start: f.get("start"), status: f.get("status"), ins: f.get("ins"), limits };
+    if (state.newPatient) {
+      const p = { id: uid(), events: [], applied: "", sections: [{ key: f.get("sec"), start: f.get("secStart") || data.start }], ...data };
+      p.events.push({ id: uid(), date: data.start, type: "erst" });
+      db.patients.push(p); state.sel = p.id; state.newPatient = false;
+    } else { Object.assign(cur(), data); state.editPatient = false; }
+    save();
+  } else if (id === "fAdd") {
+    const p = cur(), kind = f.get("kind");
+    let minutes = "";
+    if (kind === "einzel") minutes = Number(f.get("minOther")) || Number(f.get("minutes")) || 50;
+    if (kind === "sprech") minutes = Number(f.get("minutes")) || 50;
+    p.events.push({ id: uid(), date: f.get("date"), type: kind, minutes });
+    state.add = null; save();
+  } else if (id === "fEvent") {
+    const data = { date: f.get("date"), type: f.get("type"), minutes: f.get("minutes") ? Number(f.get("minutes")) : "" };
+    const p = cur();
+    if (state.editEvent) Object.assign(p.events.find(e => e.id === state.editEvent), data);
+    else p.events.push({ id: uid(), ...data });
+    state.showEventForm = false; state.editEvent = null; save();
+  } else if (id === "fSec") {
+    const p = cur(); const key = f.get("sec"), start = f.get("start");
+    p.sections.push({ key, start });
+    p.applied = "";
+    p.events.push({ id: uid(), date: start, type: "abschnitt", sec: key });
+    state.showSecForm = false; save();
+  } else if (id === "fSettings") {
+    db.settings.warn = Math.max(0, parseInt(f.get("warn"), 10) || 0); save();
+  }
+  render();
+});
+
+/* ---------- Sichern / Laden ---------- */
+document.getElementById("btnExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: "application/json" });
+  const file = new File([blob], "therapie-zeitstrahl-" + today() + ".json", { type: "application/json" });
+  // Auf dem iPhone: Teilen-Menü (z. B. „In Dateien sichern“)
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: "Therapie-Zeitstrahl Sicherung" }).catch(() => {});
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+};
+document.getElementById("btnImport").onclick = () => document.getElementById("fileImport").click();
+document.getElementById("fileImport").onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!Array.isArray(d.patients)) throw 0;
+      if (!confirm("Die aktuellen Daten werden durch die Sicherung ersetzt. Fortfahren?")) return;
+      db = migrate(d); save(); state.sel = db.patients[0]?.id || null; render();
+    } catch (x) { alert("Diese Datei ist keine gültige Sicherung."); }
+  };
+  r.readAsText(file); e.target.value = "";
+};
+
+/* ---------- Offline-Nutzung ---------- */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+  // Neue App-Version wurde im Hintergrund geladen: einmal neu laden (nicht während einer Eingabe)
+  navigator.serviceWorker.addEventListener("message", ev => {
+    if (ev.data === "updated" && !document.querySelector("form")) location.reload();
+  });
+}
+if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
+
+save();
+render();
+</script>
+</body>
+</html>
